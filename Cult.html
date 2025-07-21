@@ -55,7 +55,7 @@
         // Firebase Imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, updateDoc, getDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signOut, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
         // --- App State ---
         let state = {
@@ -177,9 +177,16 @@
 
         const Header = () => {
             const guildName = state.settings.guild.name.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            const userId = state.user ? state.user.uid : 'Not Logged In';
             return `
-                <header class="text-center mb-4">
-                    <h1 class="text-4xl md:text-5xl font-bold text-yellow-400 tracking-wider">${guildName}</h1>
+                <header class="text-center mb-4 relative">
+                    <div class="absolute top-0 right-0 text-right p-2">
+                        ${state.user ? `
+                            <p class="text-xs text-gray-400 truncate max-w-[200px] md:max-w-xs">User: ${userId}</p>
+                            <button id="logout-link" class="text-sm text-red-400 hover:text-red-300 underline">Logout</button>
+                        ` : '<p class="text-xs text-gray-500">Not Logged In</p>'}
+                    </div>
+                    <h1 class="text-4xl md:text-5xl font-bold text-yellow-400 tracking-wider pt-8 md:pt-4">${guildName}</h1>
                     <h2 class="text-2xl md:text-3xl font-bold text-gray-300">Raid Organizer</h2>
                 </header>
             `;
@@ -325,7 +332,7 @@
                 <div id="player-card-${player.id}" class="bg-gray-700 rounded-lg shadow-md transition-all duration-300 player-card">
                     <div class="p-3 flex items-center justify-between">
                         <div class="flex-grow min-w-0 p-2" draggable="true" data-player-id="${player.id}" data-team-id="${teamId}">
-                             ${PlayerHeader(playerForHeader, state.settings.guild, `window.togglePlayerCard('${safePlayerId}')`)}
+                                ${PlayerHeader(playerForHeader, state.settings.guild, `window.togglePlayerCard('${safePlayerId}')`)}
                         </div>
                         <div class="flex flex-col items-center space-y-2 ml-2">
                             ${teamId === 'teamFang' ? `
@@ -527,8 +534,8 @@
                     </div>
 
                     <div class="bg-gray-800 rounded-lg shadow-lg p-6">
-                         <h3 class="text-3xl font-bold mb-4 text-center text-yellow-400 border-b-2 border-gray-700 pb-2">Mentor Assignments</h3>
-                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <h3 class="text-3xl font-bold mb-4 text-center text-yellow-400 border-b-2 border-gray-700 pb-2">Mentor Assignments</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             ${state.mentors.map(mentor => `
                                 <div class="bg-gray-900/50 rounded-lg p-4 min-h-[150px]">
                                     <div class="flex justify-between items-center mb-4">
@@ -540,7 +547,7 @@
                                     </div>
                                 </div>
                             `).join('')}
-                         </div>
+                        </div>
                     </div>
                 </div>
             `;
@@ -607,13 +614,13 @@
                             <div class="w-full">
                                 <label for="roster-class-filter-select" class="block text-sm font-medium text-gray-300 mb-1">Filter by Class</label>
                                 <select id="roster-class-filter-select" class="bg-gray-700 text-white w-full p-3 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-400">
-                                     ${classes.map(className => `<option value="${className}" ${selectedClass === className ? 'selected' : ''}>${className}</option>`).join('')}
+                                    ${classes.map(className => `<option value="${className}" ${selectedClass === className ? 'selected' : ''}>${className}</option>`).join('')}
                                 </select>
                             </div>
                             <div class="w-full">
                                 <label for="roster-role-filter-select" class="block text-sm font-medium text-gray-300 mb-1">Filter by Role</label>
                                 <select id="roster-role-filter-select" class="bg-gray-700 text-white w-full p-3 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-400">
-                                     ${roles.map(role => `<option value="${role}" ${selectedRole === role ? 'selected' : ''}>${role}</option>`).join('')}
+                                    ${roles.map(role => `<option value="${role}" ${selectedRole === role ? 'selected' : ''}>${role}</option>`).join('')}
                                 </select>
                             </div>
                         </div>
@@ -711,6 +718,16 @@
 
         // --- Event Listeners ---
         const attachEventListeners = () => {
+            // Logout
+            document.getElementById('logout-link')?.addEventListener('click', () => {
+                signOut(auth).then(() => {
+                    showNotification("You have been logged out.");
+                }).catch((error) => {
+                    console.error("Logout Error", error);
+                    showNotification("Error logging out.", "error");
+                });
+            });
+            
             // Tab navigation
             document.querySelectorAll('.tab-button').forEach(button => {
                 button.addEventListener('click', (e) => {
@@ -1170,9 +1187,9 @@
 
                     if (totalMembers === 0) {
                         if (showLoadingScreen) {
-                             document.getElementById('loading-bar').style.width = '100%';
-                             clearInterval(jokeInterval);
-                             setTimeout(() => document.getElementById('loading-screen').classList.add('hidden'), 500);
+                            document.getElementById('loading-bar').style.width = '100%';
+                            clearInterval(jokeInterval);
+                            setTimeout(() => document.getElementById('loading-screen').classList.add('hidden'), 500);
                         }
                     }
 
@@ -1249,15 +1266,10 @@
             }
         };
 
-        onAuthStateChanged(auth, (currentUser) => {
-            state.user = currentUser;
-            state.isAuthReady = true;
-
-            // Once authenticated, set up listeners for data that can change
+        const setupFirestoreListeners = () => {
             const settingsGuildRef = doc(db, "artifacts", appId, "public", "data", "app_settings", "guild_config");
             onSnapshot(settingsGuildRef, docSnap => {
                 if (docSnap.exists()) {
-                    // Only update officers, keep the rest hardcoded
                     state.settings.guild.officers = docSnap.data().officers || state.settings.guild.officers;
                 }
                 render();
@@ -1286,14 +1298,30 @@
                 state.mentors = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 render();
             });
+        }
+
+        onAuthStateChanged(auth, (currentUser) => {
+            state.user = currentUser;
+            state.isAuthReady = true;
+
+            if (currentUser) {
+                console.log("User is logged in:", currentUser.uid);
+                setupFirestoreListeners();
+            } else {
+                console.log("No user is logged in.");
+                // Clear sensitive data on logout
+                state.teamFeather = [];
+                state.teamFang = [];
+                state.teamTrials = [];
+                state.mentors = [];
+            }
+            // Render the UI once the auth state is confirmed.
+            render();
         });
 
-        // Initial call
+        // Initial call to start the authentication process
         authSignIn();
-        render();
+
     </script>
 </body>
 </html>
-
-
-
