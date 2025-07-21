@@ -91,14 +91,7 @@
         };
 
         // --- Firebase Configuration & Initialization ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyDVWcNNv2jfee6JmycN5HXEmKrQ9x-0J3c",
-            authDomain: "cultofsleep-6cdb7.firebaseapp.com",
-            projectId: "cultofsleep-6cdb7",
-            storageBucket: "cultofsleep-6cdb7.appspot.com",
-            messagingSenderId: "55622141495",
-            appId: "1:55622141495:web:c31a083a723e564c1561b2"
-        };
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-cult-of-sleep';
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
@@ -205,7 +198,7 @@
             `;
         };
 
-        const PlayerHeader = (player, guildConfig, toggleId = '', toggleType = '') => {
+        const PlayerHeader = (player, guildConfig, onClick = '') => {
             const classColor = getClassColor(player.class);
             const mythicPlusScore = player.mythicPlusScore ?? player.mythic_plus_scores_by_season?.[0]?.scores?.all ?? 0;
             const scoreColor = getMythicPlusColor(mythicPlusScore);
@@ -218,11 +211,9 @@
                 const formattedDate = ilvlGainData.since.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                 ilvlGainText = `(+${ilvlGainData.gain.toFixed(2)} iLvl since ${formattedDate})`;
             }
-            
-            const dataAttrs = toggleId ? `data-toggle-id="${toggleId}" data-toggle-type="${toggleType}"` : '';
 
             return `
-                <div class="player-header-clickable flex items-center flex-grow min-w-0 ${toggleId ? 'cursor-pointer' : ''}" ${dataAttrs}>
+                <div class="flex items-center flex-grow min-w-0 ${onClick ? 'cursor-pointer' : ''}" ${onClick ? `onclick="${onClick}"` : ''}>
                     <img src="${player.thumbnail_url}" alt="${player.name}" class="w-12 h-12 md:w-16 md:h-16 rounded-full border-2 flex-shrink-0" style="border-color: ${classColor}" onerror="this.onerror=null; this.src='https://placehold.co/64x64/1F2937/EAB308?text=${player.name.charAt(0)}';">
                     <div class="ml-3 min-w-0">
                         <h4 class="font-bold text-lg flex items-center gap-2 truncate" style="color: ${classColor};">
@@ -334,7 +325,7 @@
                 <div id="player-card-${player.id}" class="bg-gray-700 rounded-lg shadow-md transition-all duration-300 player-card">
                     <div class="p-3 flex items-center justify-between">
                         <div class="flex-grow min-w-0 p-2" draggable="true" data-player-id="${player.id}" data-team-id="${teamId}">
-                             ${PlayerHeader(playerForHeader, state.settings.guild, safePlayerId, 'player')}
+                             ${PlayerHeader(playerForHeader, state.settings.guild, `window.togglePlayerCard('${safePlayerId}')`)}
                         </div>
                         <div class="flex flex-col items-center space-y-2 ml-2">
                             ${teamId === 'teamFang' ? `
@@ -487,7 +478,7 @@
 
             return `
                 <div class="bg-gray-700 rounded-lg p-4 flex flex-col gap-4 shadow-md">
-                    ${PlayerHeader(playerForHeader, state.settings.guild, trial.id, 'mentor-trial')}
+                    ${PlayerHeader(playerForHeader, state.settings.guild)}
                     <div>
                         <label for="mentor-${trial.id}" class="block text-sm font-medium text-gray-300 mb-1">Mentor</label>
                         <select id="mentor-${trial.id}" data-trial-id="${trial.id}" class="trial-mentor-select bg-gray-600 text-white w-full p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-400">
@@ -569,7 +560,7 @@
             return `
                 <div id="mentor-trial-card-${trial.id}" class="bg-gray-700 rounded-lg shadow-md transition-all duration-300 player-card">
                     <div class="p-3">
-                        ${PlayerHeader(playerForHeader, state.settings.guild, safeTrialId, 'mentor-trial')}
+                        ${PlayerHeader(playerForHeader, state.settings.guild, `window.toggleMentorTrialCard('${safeTrialId}')`)}
                     </div>
                     <div id="mentor-item-list-${trial.id}" class="hidden">
                         ${player.gear && player.gear.items ? ItemList(player.gear.items) : ''}
@@ -673,7 +664,7 @@
             return `
                 <div id="roster-card-${blizzardData.id}" class="bg-gray-700 rounded-lg shadow-md transition-all duration-300 flex flex-col">
                     <div class="p-3 flex flex-col gap-3 flex-grow">
-                        ${PlayerHeader(playerForHeader, state.settings.guild, blizzardData.id, 'roster')}
+                        ${PlayerHeader(playerForHeader, state.settings.guild, `window.toggleRosterCard('${blizzardData.id}')`)}
                         ${detailError ? '<p class="text-xs text-red-400 text-center">Could not load details.</p>' : ''}
                         ${raiderioData ? `
                             <div class="flex flex-col gap-2 w-full mt-auto pt-2">
@@ -783,34 +774,21 @@
                 });
                 document.querySelectorAll('.add-roster-player-button').forEach(btn => btn.addEventListener('click', handleAddFromRoster));
             }
-
-            // Centralized click handler for expanding cards
-            document.querySelectorAll('.player-header-clickable').forEach(el => {
-                if (el.dataset.toggleId) {
-                    el.addEventListener('click', (e) => {
-                        const { toggleId, toggleType } = e.currentTarget.dataset;
-                        
-                        let itemListId;
-                        if (toggleType === 'player') {
-                            itemListId = `item-list-${toggleId}`;
-                        } else if (toggleType === 'roster') {
-                            itemListId = `roster-item-list-${toggleId}`;
-                        } else if (toggleType === 'mentor-trial') {
-                            itemListId = `mentor-item-list-${toggleId}`;
-                        }
-
-                        if (itemListId) {
-                            const itemList = document.getElementById(itemListId);
-                            if (itemList) {
-                                itemList.classList.toggle('hidden');
-                            }
-                        }
-                    });
-                }
-            });
         };
 
         // --- Event Handlers & Logic ---
+        window.togglePlayerCard = (playerId) => {
+            const itemList = document.getElementById(`item-list-${playerId}`);
+            if (itemList) itemList.classList.toggle('hidden');
+        };
+        window.toggleRosterCard = (charId) => {
+            const itemList = document.getElementById(`roster-item-list-${charId}`);
+            if (itemList) itemList.classList.toggle('hidden');
+        };
+        window.toggleMentorTrialCard = (trialId) => {
+            const itemList = document.getElementById(`mentor-item-list-${trialId}`);
+            if (itemList) itemList.classList.toggle('hidden');
+        };
         window.clearSearchError = () => {
             state.search.error = null;
             render();
@@ -1316,3 +1294,6 @@
     </script>
 </body>
 </html>
+
+
+
