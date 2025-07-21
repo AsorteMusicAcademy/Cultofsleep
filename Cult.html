@@ -78,6 +78,7 @@
                 error: null,
                 searchTerm: '',
                 selectedClass: 'All',
+                selectedRole: 'All',
                 hasLoadedOnce: false // To track initial load
             },
             search: {
@@ -163,8 +164,17 @@
         // --- Templating / Component Functions ---
         const LinkIcon = () => '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>';
         const RefreshIcon = () => '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M20 20v-5h-5M20 4h-5v5M4 20h5v-5M12 4v2.25c-2.43.5-4.5 2.57-5 5H4.75c.5-3.58 3.42-6.5 7-7v2.25L16 8l-4-4zM12 20v-2.25c2.43-.5 4.5-2.57 5-5h2.25c-.5 3.58-3.42 6.5-7 7v-2.25L8 16l4 4z"/></svg>';
-
+        const CheckIcon = () => `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>`;
         
+        const RoleIcon = (role) => {
+            const icons = {
+                Tank: `<svg xmlns="http://www.w3.org/2000/svg" title="Tank" class="h-4 w-4 text-blue-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"></path></svg>`,
+                Healer: `<svg xmlns="http://www.w3.org/2000/svg" title="Healer" class="h-4 w-4 text-green-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>`,
+                DPS: `<svg xmlns="http://www.w3.org/2000/svg" title="DPS" class="h-4 w-4 text-red-500" viewBox="0 0 24 24" fill="currentColor"><path d="M16.8,3.23,15.42,4.62,18,7.21l1.39-1.39a1.5,1.5,0,0,0,0-2.12,1.5,1.5,0,0,0-2.12,0ZM14,6,4.5,15.5,3,17l2,2,1.5-1.5L16,8ZM2,22l5-5-2-2Z"></path></svg>`
+            };
+            return icons[role] || '';
+        };
+
         const Header = () => {
             const guildName = state.settings.guild.name.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
             return `
@@ -194,11 +204,12 @@
             const scoreColor = getMythicPlusColor(mythicPlusScore);
             const raidProgression = player.raidProgression ?? player.raid_progression;
             const ilvlGainData = calculateIlvlGain(player.itemLevelHistory);
+            const role = getRoleFromSpec(player.spec);
             
             let ilvlGainText = '';
             if (ilvlGainData.since) {
                 const formattedDate = ilvlGainData.since.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                ilvlGainText = `(+${ilvlGainData.gain} iLvl since ${formattedDate})`;
+                ilvlGainText = `(+${ilvlGainData.gain.toFixed(2)} iLvl since ${formattedDate})`;
             }
 
             return `
@@ -206,6 +217,7 @@
                     <img src="${player.thumbnail_url}" alt="${player.name}" class="w-12 h-12 md:w-16 md:h-16 rounded-full border-2 flex-shrink-0" style="border-color: ${classColor}" onerror="this.onerror=null; this.src='https://placehold.co/64x64/1F2937/EAB308?text=${player.name.charAt(0)}';">
                     <div class="ml-3 min-w-0">
                         <h4 class="font-bold text-lg flex items-center gap-2 truncate" style="color: ${classColor};">
+                            ${RoleIcon(role)}
                             <span class="truncate">${player.name}</span>
                             <a href="${getWarcraftLogsUrl(player, guildConfig)}" onclick="event.stopPropagation()" target="_blank" rel="noopener noreferrer" title="View Warcraft Logs" class="text-gray-400 hover:text-white flex-shrink-0">
                                 ${LinkIcon()}
@@ -214,10 +226,10 @@
                         <p class="text-sm text-gray-300 truncate">${player.race} ${player.spec} ${player.class}</p>
                         <div class="flex items-center gap-3 text-sm flex-wrap">
                             <p class="font-semibold text-green-400">iLvl: ${player.itemLevel}</p>
-                            ${ilvlGainText ? `<p class="font-semibold ${ilvlGainData.gain > 0 ? 'text-yellow-400' : 'text-gray-400'}">${ilvlGainText}</p>` : ''}
+                            ${ilvlGainText ? `<p class="font-semibold ${ilvlGainData.gain > 0 ? 'text-yellow-400' : 'text-gray-400'} text-xs">${ilvlGainText}</p>` : ''}
                             <p class="font-bold ${scoreColor}">M+: ${Math.round(mythicPlusScore)}</p>
                         </div>
-                        ${raidProgression ? RaidProgress(raidProgression, 'liberation-of-undermine', 'LoU Prog') : ''}
+                        ${raidProgression ? RaidProgress(raidProgression, 'the-war-within-raid-1', 'TWW Prog') : ''}
                         ${player.startDate ? `<p class="text-xs text-gray-400 italic pt-1">Trial Started: ${player.startDate}</p>` : ''}
                         ${player.mentorName ? `<p class="text-xs text-yellow-300 italic pt-1">Assigned to mentor - ${player.mentorName}</p>` : ''}
                     </div>
@@ -242,7 +254,7 @@
             const slotOrder = ['head', 'neck', 'shoulder', 'back', 'chest', 'wrist', 'hands', 'waist', 'legs', 'feet', 'finger1', 'finger2', 'trinket1', 'trinket2', 'mainhand', 'offhand'];
             const equippedItems = slotOrder.map(slot => ({ slot, ...items[slot] })).filter(item => items[item.slot]);
             return `
-                <div class="bg-gray-800 rounded-b-lg p-4 mt-[-8px] pt-5 animate-fade-in-down">
+                <div class="bg-gray-800 p-4 animate-fade-in-down">
                     <h5 class="text-lg font-semibold mb-3 text-gray-300 border-b border-gray-700 pb-2">Equipped Gear</h5>
                     <ul class="space-y-2">
                         ${equippedItems.map(item => `
@@ -262,19 +274,72 @@
             `;
         };
 
+        const BossKills = (raidProgression) => {
+            const raid = raidProgression['the-war-within-raid-1'];
+            if (!raid) return '';
+
+            const difficulties = [
+                { name: 'Mythic', kills: raid.mythic_bosses_killed_details, color: 'text-purple-400' },
+                { name: 'Heroic', kills: raid.heroic_bosses_killed_details, color: 'text-blue-400' },
+                { name: 'Normal', kills: raid.normal_bosses_killed_details, color: 'text-green-400' },
+            ];
+
+            return `
+                <div class="bg-gray-800 p-4 mt-2 animate-fade-in-down">
+                    <h5 class="text-lg font-semibold mb-3 text-gray-300 border-b border-gray-700 pb-2">Boss Kills (The War Within)</h5>
+                    <div class="space-y-3">
+                    ${difficulties.map(diff => {
+                        if (!diff.kills || diff.kills.length === 0) return '';
+                        return `
+                            <div>
+                                <h6 class="font-bold ${diff.color}">${diff.name} (${diff.kills.length}/${raid.total_bosses})</h6>
+                                <ul class="grid grid-cols-2 gap-x-4 gap-y-1 mt-1">
+                                    ${diff.kills.map(boss => `
+                                        <li class="flex items-center text-sm text-gray-200">
+                                            ${CheckIcon()}
+                                            <span class="ml-2">${boss.name}</span>
+                                        </li>
+                                    `).join('')}
+                                </ul>
+                            </div>
+                        `;
+                    }).join('')}
+                    </div>
+                </div>
+            `;
+        };
+
         const PlayerCard = (player, teamId) => {
             const safePlayerId = player.id.replace(/'/g, "\\'");
+            const trialInfo = state.teamTrials.find(t => t.id === player.id);
+            let mentorName = null;
+            if (trialInfo && trialInfo.mentor) {
+                const mentor = state.mentors.find(m => m.id === trialInfo.mentor);
+                if (mentor) {
+                    mentorName = mentor.name;
+                }
+            }
+            const playerForHeader = { ...player, mentorName: mentorName };
+
             return `
                 <div id="player-card-${player.id}" class="bg-gray-700 rounded-lg shadow-md transition-all duration-300 player-card">
-                    <div class="p-3 flex items-center justify-between hover:bg-gray-600 cursor-pointer rounded-lg" draggable="true" data-player-id="${player.id}" data-team-id="${teamId}">
-                        ${PlayerHeader(player, state.settings.guild, `window.togglePlayerCard('${safePlayerId}')`)}
-                        <div class="flex items-center flex-shrink-0">
-                            <button data-refresh-player="${player.id}" data-team-name="${teamId}" title="Refresh Player Data" class="refresh-btn text-gray-400 hover:text-white p-2">${RefreshIcon()}</button>
-                            <button data-remove-player="${player.id}" data-team-name="${teamId}" data-player-name="${player.name}" class="text-gray-400 hover:text-red-500 font-bold text-2xl px-2 z-10">&times;</button>
+                    <div class="p-3 flex items-center justify-between">
+                        <div class="flex-grow min-w-0 p-2" draggable="true" data-player-id="${player.id}" data-team-id="${teamId}">
+                             ${PlayerHeader(playerForHeader, state.settings.guild, `window.togglePlayerCard('${safePlayerId}')`)}
+                        </div>
+                        <div class="flex flex-col items-center space-y-2 ml-2">
+                            ${teamId === 'teamFang' ? `
+                                <button data-move-to-trials="${player.id}" data-team-name="${teamId}" data-player-name="${player.name}" title="Move to Trials" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded text-xs transition">To Trials</button>
+                            ` : '<div class="h-6"></div>' }
+                            <div class="flex">
+                                <button data-refresh-player="${player.id}" data-team-name="${teamId}" title="Refresh Player Data" class="refresh-btn text-gray-400 hover:text-white p-1">${RefreshIcon()}</button>
+                                <button data-remove-player="${player.id}" data-team-name="${teamId}" data-player-name="${player.name}" class="text-gray-400 hover:text-red-500 font-bold text-xl px-2 z-10">&times;</button>
+                            </div>
                         </div>
                     </div>
-                    <div id="item-list-${player.id}" class="hidden">
+                    <div id="item-list-${player.id}" class="hidden rounded-b-lg">
                         ${player.gear && player.gear.items ? ItemList(player.gear.items) : ''}
+                        ${player.raidProgression ? BossKills(player.raidProgression) : ''}
                     </div>
                 </div>
             `;
@@ -483,11 +548,13 @@
 
         const MentorTrialCard = (trial) => {
             const player = trial.player;
+            const assignedMentor = state.mentors.find(m => m.id === trial.mentor);
             const playerForHeader = {
                 ...player,
                 spec: player.active_spec_name || player.spec,
                 itemLevel: player.gear?.item_level_equipped || player.itemLevel,
-                itemLevelHistory: player.itemLevelHistory || []
+                itemLevelHistory: player.itemLevelHistory || [],
+                mentorName: assignedMentor ? assignedMentor.name : null
             };
             const safeTrialId = trial.id.replace(/'/g, "\\'");
             return `
@@ -497,6 +564,7 @@
                     </div>
                     <div id="mentor-item-list-${trial.id}" class="hidden">
                         ${player.gear && player.gear.items ? ItemList(player.gear.items) : ''}
+                        ${player.raidProgression ? BossKills(player.raidProgression) : ''}
                     </div>
                 </div>
             `;
@@ -504,13 +572,22 @@
 
 
         const GuildRosterPage = () => {
-            const { members, isLoading, loadingMessage, error, searchTerm, selectedClass } = state.guildRoster;
+            const { members, isLoading, error, searchTerm, selectedClass, selectedRole } = state.guildRoster;
             const classes = ['All', 'Death Knight', 'Demon Hunter', 'Druid', 'Evoker', 'Hunter', 'Mage', 'Monk', 'Paladin', 'Priest', 'Rogue', 'Shaman', 'Warlock', 'Warrior'];
+            const roles = ['All', 'Tank', 'Healer', 'DPS'];
             
             const filteredMembers = members.filter(member => {
+                if (!member.raiderioData) return false;
+
                 const charName = member.blizzardData.name.toLowerCase();
-                const className = member.raiderioData ? member.raiderioData.class : member.blizzardData.playable_class.name;
-                return charName.includes(searchTerm.toLowerCase()) && (selectedClass === 'All' || className === selectedClass);
+                const className = member.raiderioData.class;
+                const role = getRoleFromSpec(member.raiderioData.active_spec_name);
+
+                const nameMatch = charName.includes(searchTerm.toLowerCase());
+                const classMatch = selectedClass === 'All' || className === selectedClass;
+                const roleMatch = selectedRole === 'All' || role === selectedRole;
+
+                return nameMatch && classMatch && roleMatch;
             });
 
             return `
@@ -521,9 +598,25 @@
                             ${isLoading ? 'Loading...' : 'Refresh Roster'}
                         </button>
                     </div>
-                    <div class="mb-4"><input type="text" id="roster-search-term" placeholder="Search for a member..." value="${searchTerm}" class="bg-gray-700 text-white w-full p-3 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-400" /></div>
-                    <div class="mb-6 flex flex-wrap justify-center gap-2">
-                        ${classes.map(className => `<button data-class-name="${className}" class="roster-class-filter px-3 py-1 text-sm font-semibold rounded-full transition ${selectedClass === className ? 'text-gray-900' : 'text-white hover:bg-gray-600'}" style="background-color: ${selectedClass === className ? getClassColor(className) : '#374151'};">${className}</button>`).join('')}
+                    <div class="mb-4 space-y-4">
+                        <div>
+                             <label for="roster-search-term" class="block text-sm font-medium text-gray-300 mb-1">Search by Name</label>
+                             <input type="text" id="roster-search-term" placeholder="Character name..." value="${searchTerm}" class="bg-gray-700 text-white w-full p-3 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-400" />
+                        </div>
+                        <div class="flex flex-col md:flex-row gap-4">
+                            <div class="w-full">
+                                <label for="roster-class-filter-select" class="block text-sm font-medium text-gray-300 mb-1">Filter by Class</label>
+                                <select id="roster-class-filter-select" class="bg-gray-700 text-white w-full p-3 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-400">
+                                     ${classes.map(className => `<option value="${className}" ${selectedClass === className ? 'selected' : ''}>${className}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="w-full">
+                                <label for="roster-role-filter-select" class="block text-sm font-medium text-gray-300 mb-1">Filter by Role</label>
+                                <select id="roster-role-filter-select" class="bg-gray-700 text-white w-full p-3 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-400">
+                                     ${roles.map(role => `<option value="${role}" ${selectedRole === role ? 'selected' : ''}>${role}</option>`).join('')}
+                                </select>
+                            </div>
+                        </div>
                     </div>
                     ${error ? `<p class="text-red-400 text-center py-4">Error: ${error}</p>` : ''}
                     ${(isLoading && !state.guildRoster.hasLoadedOnce) ? '' : 
@@ -538,8 +631,35 @@
 
         const RosterMemberCard = (member) => {
             const { blizzardData, raiderioData, detailError } = member;
-            const playerForHeader = raiderioData ? { ...raiderioData, spec: raiderioData.active_spec_name, itemLevel: raiderioData.gear.item_level_equipped }
-                : { name: blizzardData.name, class: blizzardData.playable_class.name, race: blizzardData.playable_race.name, spec: 'Loading...', itemLevel: '...', thumbnail_url: '', realm: blizzardData.realm.slug };
+            
+            const realmSlug = member.blizzardData.realm.slug;
+            const playerId = `${member.blizzardData.name}-${realmSlug}`;
+            const isInFang = state.teamFang.some(p => p.id === playerId);
+            
+            const trialInfo = state.teamTrials.find(t => t.id === playerId);
+            let mentorName = null;
+            if (trialInfo && trialInfo.mentor) {
+                const mentor = state.mentors.find(m => m.id === trialInfo.mentor);
+                if (mentor) {
+                    mentorName = mentor.name;
+                }
+            }
+
+            const playerForHeader = raiderioData ? { 
+                ...raiderioData, 
+                spec: raiderioData.active_spec_name, 
+                itemLevel: raiderioData.gear.item_level_equipped,
+                mentorName: mentorName
+            } : { 
+                name: blizzardData.name, 
+                class: blizzardData.playable_class.name, 
+                race: blizzardData.playable_race.name, 
+                spec: 'Loading...', 
+                itemLevel: '...', 
+                thumbnail_url: '', 
+                realm: blizzardData.realm.slug,
+                mentorName: mentorName
+            };
             
             return `
                 <div id="roster-card-${blizzardData.id}" class="bg-gray-700 rounded-lg shadow-md transition-all duration-300 flex flex-col">
@@ -548,7 +668,9 @@
                         ${detailError ? '<p class="text-xs text-red-400 text-center">Could not load details.</p>' : ''}
                         ${raiderioData ? `
                             <div class="flex flex-col gap-2 w-full mt-auto pt-2">
-                                <button class="add-roster-player-button w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded text-sm transition" data-char-id="${blizzardData.id}" data-team-name="trials">Add to Trials</button>
+                                ${isInFang ? `
+                                    <button class="add-roster-player-button w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded text-sm transition" data-char-id="${blizzardData.id}" data-team-name="trials">Add to Trials</button>
+                                ` : ''}
                                 <div class="flex gap-2 w-full">
                                     <button class="add-roster-player-button flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-sm transition" data-char-id="${blizzardData.id}" data-team-name="teamFeather">To Feather</button>
                                     <button class="add-roster-player-button flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-2 rounded text-sm transition" data-char-id="${blizzardData.id}" data-team-name="teamFang">To Fang</button>
@@ -558,6 +680,7 @@
                     </div>
                     <div id="roster-item-list-${blizzardData.id}" class="hidden">
                         ${raiderioData?.gear ? ItemList(raiderioData.gear.items) : ''}
+                        ${raiderioData?.raid_progression ? BossKills(raiderioData.raid_progression) : ''}
                     </div>
                 </div>
             `;
@@ -615,6 +738,7 @@
                 });
                 document.querySelectorAll('[data-remove-player]').forEach(btn => btn.addEventListener('click', handleRemovePlayer));
                 document.querySelectorAll('[data-refresh-player]').forEach(btn => btn.addEventListener('click', handleRefreshPlayer));
+                document.querySelectorAll('[data-move-to-trials]').forEach(btn => btn.addEventListener('click', handleMoveToTrials));
             }
 
             if (state.activeTab === 'settings') {
@@ -640,10 +764,14 @@
                     state.guildRoster.searchTerm = e.target.value;
                     render();
                 });
-                document.querySelectorAll('.roster-class-filter').forEach(btn => btn.addEventListener('click', e => {
-                    state.guildRoster.selectedClass = e.currentTarget.dataset.className;
+                document.getElementById('roster-class-filter-select')?.addEventListener('change', e => {
+                    state.guildRoster.selectedClass = e.target.value;
                     render();
-                }));
+                });
+                document.getElementById('roster-role-filter-select')?.addEventListener('change', e => {
+                    state.guildRoster.selectedRole = e.target.value;
+                    render();
+                });
                 document.querySelectorAll('.add-roster-player-button').forEach(btn => btn.addEventListener('click', handleAddFromRoster));
             }
         };
@@ -680,7 +808,7 @@
 
             try {
                 const { characterName, realm, region } = state.search;
-                const url = `https://raider.io/api/v1/characters/profile?region=${region}&realm=${realm}&name=${characterName}&fields=gear,mythic_plus_scores_by_season:current,raid_progression`;
+                const url = `https://raider.io/api/v1/characters/profile?region=${region}&realm=${realm}&name=${encodeURIComponent(characterName)}&fields=gear,mythic_plus_scores_by_season:current,raid_progression`;
                 const response = await fetch(url);
                 if (!response.ok) throw new Error('Character not found on Raider.io.');
                 const data = await response.json();
@@ -784,6 +912,18 @@
                 showNotification(`${playerName} removed.`);
             } catch (e) { console.error("Error removing player:", e); showNotification("Failed to remove player.", "error"); }
         };
+        
+        const handleMoveToTrials = (e) => {
+            e.stopPropagation();
+            const { moveToTrials: playerId, teamName } = e.currentTarget.dataset;
+            const sourceTeamList = teamName === 'teamFeather' ? state.teamFeather : state.teamFang;
+            const player = sourceTeamList.find(p => p.id === playerId);
+
+            if (player) {
+                addPlayerToTrials(player);
+                // The line to remove the player is now gone
+            }
+        };
 
         const handleAddSearchedPlayer = (e) => {
             const teamName = e.currentTarget.dataset.teamName;
@@ -805,25 +945,34 @@
         const handleRefreshPlayer = async (e) => {
             e.stopPropagation();
             const { refreshPlayer: playerId, teamName } = e.currentTarget.dataset;
-            const team = teamName === 'teamFeather' ? state.teamFeather : state.teamFang;
+            const team = [...state.teamFeather, ...state.teamFang, ...state.teamTrials.map(t => ({...t.player, id: t.id}))];
             const player = team.find(p => p.id === playerId);
+
             if (!player) return;
 
             showNotification(`Refreshing ${player.name}...`);
             try {
-                const url = `https://raider.io/api/v1/characters/profile?region=${player.region}&realm=${player.realm}&name=${player.name}&fields=gear,mythic_plus_scores_by_season:current,raid_progression`;
+                const url = `https://raider.io/api/v1/characters/profile?region=${player.region}&realm=${player.realm}&name=${encodeURIComponent(player.name)}&fields=gear,mythic_plus_scores_by_season:current,raid_progression`;
                 const response = await fetch(url);
                 if (!response.ok) throw new Error('Character not found on Raider.io.');
                 const data = await response.json();
                 
                 const playerDocRef = doc(db, "artifacts", appId, "public", "data", teamName, playerId);
-                await updateDoc(playerDocRef, {
+                
+                const updatedData = {
                     gear: data.gear,
                     itemLevel: data.gear.item_level_equipped,
                     mythicPlusScore: data.mythic_plus_scores_by_season?.[0]?.scores?.all || 0,
                     raidProgression: data.raid_progression,
                     itemLevelHistory: arrayUnion({ date: new Date().toISOString(), itemLevel: data.gear.item_level_equipped })
-                });
+                };
+
+                if (teamName.startsWith('team')) {
+                    await updateDoc(playerDocRef, updatedData);
+                } else if (teamName === 'teamTrials') {
+                     await updateDoc(playerDocRef, { player: { ...player, ...updatedData } });
+                }
+
                 showNotification(`${player.name} updated successfully!`);
             } catch (err) {
                 console.error("Failed to refresh player:", err);
@@ -1056,7 +1205,7 @@
 
         const fetchRaiderIOData = async (blizzardCharacter, region) => {
             try {
-                const url = `https://raider.io/api/v1/characters/profile?region=${region}&realm=${blizzardCharacter.realm.slug}&name=${blizzardCharacter.name.toLowerCase()}&fields=gear,mythic_plus_scores_by_season:current,raid_progression`;
+                const url = `https://raider.io/api/v1/characters/profile?region=${region}&realm=${blizzardCharacter.realm.slug}&name=${encodeURIComponent(blizzardCharacter.name.toLowerCase())}&fields=gear,mythic_plus_scores_by_season:current,raid_progression`;
                 const res = await fetch(url);
                 if (!res.ok) throw new Error("Raider.io fetch failed");
                 const detailedData = await res.json();
