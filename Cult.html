@@ -713,7 +713,8 @@
                     <div class="mt-6">${currentPageHtml}</div>
                 </div>
             `;
-            attachEventListeners();
+            // Defer attaching event listeners until after the browser has updated the DOM
+            setTimeout(attachEventListeners, 0);
         };
 
         // --- Event Listeners ---
