@@ -378,6 +378,15 @@
             }
             const playerForHeader = { ...player, mentorName: mentorName };
 
+            let trialsButtonHtml;
+            if (trialInfo) {
+                trialsButtonHtml = `<div class="bg-gray-600 text-white font-bold py-1 px-2 rounded text-xs text-center w-full">Player in trial</div>`;
+            } else if (teamId === 'teamFang') {
+                trialsButtonHtml = `<button ${authDisabled()} data-move-to-trials="${player.id}" data-team-name="${teamId}" data-player-name="${player.name}" title="Move to Trials" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded text-xs transition ${authDisabledClasses()}">To Trials</button>`;
+            } else {
+                 trialsButtonHtml = '<div class="h-6"></div>';
+            }
+
             return `
                 <div id="player-card-${player.id}" class="bg-gray-700 rounded-lg shadow-md transition-all duration-300 player-card">
                     <div class="p-3 flex items-center justify-between">
@@ -386,9 +395,7 @@
                         </div>
                         ${teamId !== 'unassigned' ? `
                         <div class="flex flex-col items-center space-y-2 ml-2">
-                            ${teamId === 'teamFang' ? `
-                                <button ${authDisabled()} data-move-to-trials="${player.id}" data-team-name="${teamId}" data-player-name="${player.name}" title="Move to Trials" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded text-xs transition ${authDisabledClasses()}">To Trials</button>
-                            ` : '<div class="h-6"></div>' }
+                            ${trialsButtonHtml}
                             <div class="flex">
                                 <button ${authDisabled()} data-refresh-player="${player.id}" data-team-name="${teamId}" title="Refresh Player Data" class="refresh-btn text-gray-400 hover:text-white p-1 ${authDisabledClasses()}">${RefreshIcon()}</button>
                                 <button ${authDisabled()} data-remove-player="${player.id}" data-team-name="${teamId}" data-player-name="${player.name}" class="text-gray-400 hover:text-red-500 font-bold text-xl px-2 z-10 ${authDisabledClasses()}">&times;</button>
@@ -714,6 +721,13 @@
                 realm: blizzardData.realm.slug,
                 mentorName: mentorName
             };
+
+            let trialsButtonHtml = '';
+            if (trialInfo) {
+                trialsButtonHtml = `<div class="bg-gray-600 text-white font-bold py-1 px-2 rounded text-sm text-center w-full">Player in trial</div>`;
+            } else if (isInFang) {
+                trialsButtonHtml = `<button ${authDisabled()} class="add-roster-player-button w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded text-sm transition ${authDisabledClasses()}" data-char-id="${blizzardData.id}" data-team-name="trials">Add to Trials</button>`;
+            }
             
             return `
                 <div id="roster-card-${blizzardData.id}" class="bg-gray-700 rounded-lg shadow-md transition-all duration-300 flex flex-col">
@@ -722,9 +736,7 @@
                         ${detailError ? '<p class="text-xs text-red-400 text-center">Could not load details.</p>' : ''}
                         ${raiderioData ? `
                             <div class="flex flex-col gap-2 w-full mt-auto pt-2">
-                                ${isInFang ? `
-                                    <button ${authDisabled()} class="add-roster-player-button w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded text-sm transition ${authDisabledClasses()}" data-char-id="${blizzardData.id}" data-team-name="trials">Add to Trials</button>
-                                ` : ''}
+                                ${trialsButtonHtml}
                                 <div class="flex gap-2 w-full">
                                     <button ${authDisabled()} class="add-roster-player-button flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-sm transition ${authDisabledClasses()}" data-char-id="${blizzardData.id}" data-team-name="teamFeather">To Feather</button>
                                     <button ${authDisabled()} class="add-roster-player-button flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-2 rounded text-sm transition ${authDisabledClasses()}" data-char-id="${blizzardData.id}" data-team-name="teamFang">To Fang</button>
