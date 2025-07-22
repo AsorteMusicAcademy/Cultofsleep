@@ -91,7 +91,20 @@
         };
 
         // --- Firebase Configuration & Initialization ---
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const hardcodedFirebaseConfig = {
+            apiKey: "AIzaSyDVWcNNv2jfee6JmycN5HXEmKrQ9x-0J3c",
+            authDomain: "cultofsleep-6cdb7.firebaseapp.com",
+            projectId: "cultofsleep-6cdb7",
+            storageBucket: "cultofsleep-6cdb7.appspot.com",
+            messagingSenderId: "55622141495",
+            appId: "1:55622141495:web:c31a083a723e564c1561b2"
+        };
+        
+        // Prioritize environment-provided config, but use hardcoded as a fallback.
+        const firebaseConfig = (typeof __firebase_config !== 'undefined' && __firebase_config)
+            ? JSON.parse(__firebase_config)
+            : hardcodedFirebaseConfig;
+
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-cult-of-sleep';
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
@@ -325,7 +338,7 @@
                 <div id="player-card-${player.id}" class="bg-gray-700 rounded-lg shadow-md transition-all duration-300 player-card">
                     <div class="p-3 flex items-center justify-between">
                         <div class="flex-grow min-w-0 p-2" draggable="true" data-player-id="${player.id}" data-team-id="${teamId}">
-                             ${PlayerHeader(playerForHeader, state.settings.guild, `window.togglePlayerCard('${safePlayerId}')`)}
+                                ${PlayerHeader(playerForHeader, state.settings.guild, `window.togglePlayerCard('${safePlayerId}')`)}
                         </div>
                         <div class="flex flex-col items-center space-y-2 ml-2">
                             ${teamId === 'teamFang' ? `
@@ -423,10 +436,10 @@
                         <div>
                             <h4 class="text-2xl font-bold mb-4 text-yellow-300">API Settings</h4>
                             <p class="text-gray-400 mb-4">API credentials are now hardcoded.</p>
-                             <div class="p-3 bg-gray-700 rounded-md">
-                                 <span class="block text-sm font-medium text-gray-300 mb-1">Client ID</span>
-                                 <span class="text-white font-semibold break-all">${state.settings.api.clientId}</span>
-                             </div>
+                                <div class="p-3 bg-gray-700 rounded-md">
+                                    <span class="block text-sm font-medium text-gray-300 mb-1">Client ID</span>
+                                    <span class="text-white font-semibold break-all">${state.settings.api.clientId}</span>
+                                </div>
                         </div>
                         <div>
                             <h4 class="text-2xl font-bold mb-4 text-yellow-300">Guild Settings</h4>
@@ -527,8 +540,8 @@
                     </div>
 
                     <div class="bg-gray-800 rounded-lg shadow-lg p-6">
-                         <h3 class="text-3xl font-bold mb-4 text-center text-yellow-400 border-b-2 border-gray-700 pb-2">Mentor Assignments</h3>
-                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <h3 class="text-3xl font-bold mb-4 text-center text-yellow-400 border-b-2 border-gray-700 pb-2">Mentor Assignments</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             ${state.mentors.map(mentor => `
                                 <div class="bg-gray-900/50 rounded-lg p-4 min-h-[150px]">
                                     <div class="flex justify-between items-center mb-4">
@@ -540,8 +553,8 @@
                                     </div>
                                 </div>
                             `).join('')}
-                         </div>
-                    </div>
+                            </div>
+                        </div>
                 </div>
             `;
         };
@@ -600,20 +613,20 @@
                     </div>
                     <div class="mb-4 space-y-4">
                         <div>
-                             <label for="roster-search-term" class="block text-sm font-medium text-gray-300 mb-1">Search by Name</label>
-                             <input type="text" id="roster-search-term" placeholder="Character name..." value="${searchTerm}" class="bg-gray-700 text-white w-full p-3 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-400" />
+                                <label for="roster-search-term" class="block text-sm font-medium text-gray-300 mb-1">Search by Name</label>
+                                <input type="text" id="roster-search-term" placeholder="Character name..." value="${searchTerm}" class="bg-gray-700 text-white w-full p-3 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-400" />
                         </div>
                         <div class="flex flex-col md:flex-row gap-4">
                             <div class="w-full">
                                 <label for="roster-class-filter-select" class="block text-sm font-medium text-gray-300 mb-1">Filter by Class</label>
                                 <select id="roster-class-filter-select" class="bg-gray-700 text-white w-full p-3 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-400">
-                                     ${classes.map(className => `<option value="${className}" ${selectedClass === className ? 'selected' : ''}>${className}</option>`).join('')}
+                                        ${classes.map(className => `<option value="${className}" ${selectedClass === className ? 'selected' : ''}>${className}</option>`).join('')}
                                 </select>
                             </div>
                             <div class="w-full">
                                 <label for="roster-role-filter-select" class="block text-sm font-medium text-gray-300 mb-1">Filter by Role</label>
                                 <select id="roster-role-filter-select" class="bg-gray-700 text-white w-full p-3 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-400">
-                                     ${roles.map(role => `<option value="${role}" ${selectedRole === role ? 'selected' : ''}>${role}</option>`).join('')}
+                                        ${roles.map(role => `<option value="${role}" ${selectedRole === role ? 'selected' : ''}>${role}</option>`).join('')}
                                 </select>
                             </div>
                         </div>
@@ -1170,9 +1183,9 @@
 
                     if (totalMembers === 0) {
                         if (showLoadingScreen) {
-                             document.getElementById('loading-bar').style.width = '100%';
-                             clearInterval(jokeInterval);
-                             setTimeout(() => document.getElementById('loading-screen').classList.add('hidden'), 500);
+                            document.getElementById('loading-bar').style.width = '100%';
+                            clearInterval(jokeInterval);
+                            setTimeout(() => document.getElementById('loading-screen').classList.add('hidden'), 500);
                         }
                     }
 
@@ -1294,6 +1307,3 @@
     </script>
 </body>
 </html>
-
-
-
