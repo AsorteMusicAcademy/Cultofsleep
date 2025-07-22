@@ -88,7 +88,6 @@
                 guild: { name: 'Cult Of Sleep', realm: 'Turalyon', region: 'eu', officers: 'Officer1,Officer2' },
                 discord: { serverId: '' }
             },
-            searchedCharacter: null,
             guildRoster: {
                 members: [],
                 isLoading: false,
@@ -99,12 +98,11 @@
                 selectedRole: 'All',
                 hasLoadedOnce: false // To track initial load
             },
-            search: {
-                characterName: '',
-                realm: 'Turalyon',
-                region: 'eu',
-                isLoading: false,
-                error: null,
+            organizer: {
+                filters: {
+                    teamFeather: { selectedClass: 'All', selectedRole: 'All' },
+                    teamFang: { selectedClass: 'All', selectedRole: 'All' }
+                }
             }
         };
 
@@ -202,7 +200,6 @@
             
             return { gain: gain, since: initialEntry.date };
         };
-
 
         // --- Notification Logic ---
         const showNotification = (message, type = 'success') => {
@@ -387,6 +384,7 @@
                         <div class="flex-grow min-w-0 p-2" draggable="true" data-player-id="${player.id}" data-team-id="${teamId}">
                                 ${PlayerHeader(playerForHeader, state.settings.guild, `window.togglePlayerCard('${safePlayerId}')`)}
                         </div>
+                        ${teamId !== 'unassigned' ? `
                         <div class="flex flex-col items-center space-y-2 ml-2">
                             ${teamId === 'teamFang' ? `
                                 <button ${authDisabled()} data-move-to-trials="${player.id}" data-team-name="${teamId}" data-player-name="${player.name}" title="Move to Trials" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded text-xs transition ${authDisabledClasses()}">To Trials</button>
@@ -396,6 +394,7 @@
                                 <button ${authDisabled()} data-remove-player="${player.id}" data-team-name="${teamId}" data-player-name="${player.name}" class="text-gray-400 hover:text-red-500 font-bold text-xl px-2 z-10 ${authDisabledClasses()}">&times;</button>
                             </div>
                         </div>
+                        ` : ''}
                     </div>
                     <div id="item-list-${player.id}" class="hidden rounded-b-lg">
                         ${player.gear && player.gear.items ? ItemList(player.gear.items) : ''}
@@ -424,53 +423,48 @@
             `;
         };
 
-        const TeamColumn = (title, team, teamId) => `
-            <div class="bg-gray-800 rounded-lg shadow-lg p-6 min-h-[300px] drop-zone" data-team-id="${teamId}">
-                <h3 class="text-3xl font-bold mb-2 text-center text-yellow-400 border-b-2 border-gray-700 pb-2">${title}</h3>
-                ${RoleDisplay(team)}
-                <div class="space-y-3">
-                    ${team.length > 0 ? team.map(player => PlayerCard(player, teamId)).join('') : '<p class="text-gray-500 text-center pt-8">Drag players here or use search to add them.</p>'}
-                </div>
-            </div>
-        `;
-
-        const SearchForm = () => `
-            <form id="search-form" class="bg-gray-800 p-6 rounded-lg shadow-lg mb-4 flex flex-col md:flex-row items-center justify-center gap-4">
-                <input type="text" id="search-char-name" value="${state.search.characterName}" placeholder="Character Name" class="bg-gray-700 text-white w-full p-3 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-400"/>
-                <input type="text" id="search-char-realm" value="${state.search.realm}" placeholder="Realm" class="bg-gray-700 text-white w-full p-3 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-400" disabled/>
-                <select id="search-char-region" class="bg-gray-700 text-white w-full p-3 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-400" disabled>
-                    <option value="eu">EU</option>
-                </select>
-                <button type="submit" ${state.search.isLoading ? 'disabled' : ''} class="bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold w-full md:w-auto py-3 px-6 rounded-md transition duration-300 disabled:bg-gray-500">
-                    ${state.search.isLoading ? '...' : 'Search'}
-                </button>
-            </form>
-        `;
-
-        const SearchResults = () => {
-            if (!state.searchedCharacter) return '';
-            const character = state.searchedCharacter;
+        const FilterControls = (teamId, filters) => {
+            const classes = ['All', 'Death Knight', 'Demon Hunter', 'Druid', 'Evoker', 'Hunter', 'Mage', 'Monk', 'Paladin', 'Priest', 'Rogue', 'Shaman', 'Warlock', 'Warrior'];
+            const roles = ['All', 'Tank', 'Healer', 'DPS'];
             return `
-                <div class="bg-gray-800 rounded-lg shadow-lg p-4 my-4 flex flex-col md:flex-row items-center justify-between">
-                    ${PlayerHeader({ ...character, spec: character.active_spec_name, itemLevel: character.gear.item_level_equipped }, state.settings.guild)}
-                    <div class="flex flex-col md:flex-row gap-2 mt-4 md:mt-0">
-                        <button ${authDisabled()} class="add-player-button bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-lg transition ${authDisabledClasses()}" data-team-name="trials">Add to Trials</button>
-                        <button ${authDisabled()} class="add-player-button bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition ${authDisabledClasses()}" data-team-name="teamFeather">Add to Feather</button>
-                        <button ${authDisabled()} class="add-player-button bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition ${authDisabledClasses()}" data-team-name="teamFang">Add to Fang</button>
+                <div class="my-4 space-y-2">
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <select data-team-id="${teamId}" data-filter-type="class" class="organizer-filter bg-gray-700 text-white w-full p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-400">
+                            <option value="All" ${filters.selectedClass === 'All' ? 'selected' : ''}>Filter by Class</option>
+                            ${classes.filter(c => c !== 'All').map(className => `<option value="${className}" ${filters.selectedClass === className ? 'selected' : ''}>${className}</option>`).join('')}
+                        </select>
+                        <select data-team-id="${teamId}" data-filter-type="role" class="organizer-filter bg-gray-700 text-white w-full p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-400">
+                             <option value="All" ${filters.selectedRole === 'All' ? 'selected' : ''}>Filter by Role</option>
+                            ${roles.filter(r => r !== 'All').map(role => `<option value="${role}" ${filters.selectedRole === role ? 'selected' : ''}>${role}</option>`).join('')}
+                        </select>
                     </div>
                 </div>
             `;
         };
+
+        const TeamColumn = (title, team, teamId, filters) => {
+            const filteredTeam = team.filter(player => {
+                const classMatch = filters.selectedClass === 'All' || player.class === filters.selectedClass;
+                const roleMatch = filters.selectedRole === 'All' || getRoleFromSpec(player.spec) === filters.selectedRole;
+                return classMatch && roleMatch;
+            });
+
+            return `
+            <div class="bg-gray-800 rounded-lg shadow-lg p-6 min-h-[300px] drop-zone" data-team-id="${teamId}">
+                <h3 class="text-3xl font-bold mb-2 text-center text-yellow-400 border-b-2 border-gray-700 pb-2">${title}</h3>
+                ${FilterControls(teamId, filters)}
+                ${RoleDisplay(team)}
+                <div class="space-y-3">
+                    ${filteredTeam.length > 0 ? filteredTeam.map(player => PlayerCard(player, teamId)).join('') : '<p class="text-gray-500 text-center pt-8">No players match filters.</p>'}
+                </div>
+            </div>
+        `};
         
         const RaidOrganizerPage = () => `
             <div class="animate-fade-in">
-                ${SearchForm()}
-                ${state.search.isLoading ? '<div class="text-center p-4">Searching...</div>' : ''}
-                ${state.search.error ? `<div class="text-center p-4 bg-red-800 rounded-lg my-4 cursor-pointer" onclick="window.clearSearchError()">${state.search.error}</div>` : ''}
-                ${SearchResults()}
-                <div class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    ${TeamColumn("Feather", state.teamFeather, "teamFeather")}
-                    ${TeamColumn("Fang", state.teamFang, "teamFang")}
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    ${TeamColumn("Feather", state.teamFeather, "teamFeather", state.organizer.filters.teamFeather)}
+                    ${TeamColumn("Fang", state.teamFang, "teamFang", state.organizer.filters.teamFang)}
                 </div>
             </div>
         `;
@@ -901,7 +895,7 @@
             document.querySelectorAll('.tab-button').forEach(button => {
                 button.addEventListener('click', (e) => {
                     const newTab = e.currentTarget.dataset.tab;
-                    if (newTab === 'roster' && !state.guildRoster.hasLoadedOnce) {
+                    if ((newTab === 'roster' || newTab === 'organizer') && !state.guildRoster.hasLoadedOnce) {
                         fetchGuildRoster();
                     }
                     state.activeTab = newTab;
@@ -911,12 +905,6 @@
 
             // Page-specific listeners
             if (state.activeTab === 'organizer') {
-                document.getElementById('search-form')?.addEventListener('submit', handlePlayerSearch);
-                document.getElementById('search-char-name')?.addEventListener('input', e => state.search.characterName = e.target.value);
-                
-                document.querySelectorAll('.add-player-button').forEach(btn => btn.addEventListener('click', handleAddSearchedPlayer));
-                
-                // Drag and Drop for Organizer
                 document.querySelectorAll('[draggable="true"]').forEach(card => card.addEventListener('dragstart', handleDragStart));
                 document.querySelectorAll('.drop-zone').forEach(zone => {
                     zone.addEventListener('dragover', handleDragOver);
@@ -925,6 +913,17 @@
                 document.querySelectorAll('[data-remove-player]').forEach(btn => btn.addEventListener('click', handleRemovePlayer));
                 document.querySelectorAll('[data-refresh-player]').forEach(btn => btn.addEventListener('click', handleRefreshPlayer));
                 document.querySelectorAll('[data-move-to-trials]').forEach(btn => btn.addEventListener('click', handleMoveToTrials));
+                document.querySelectorAll('.organizer-filter').forEach(sel => sel.addEventListener('change', (e) => {
+                    const teamId = e.currentTarget.dataset.teamId;
+                    const filterType = e.currentTarget.dataset.filterType;
+                    const value = e.currentTarget.value;
+                    if (filterType === 'class') {
+                        state.organizer.filters[teamId].selectedClass = value;
+                    } else if (filterType === 'role') {
+                        state.organizer.filters[teamId].selectedRole = value;
+                    }
+                    render();
+                }));
             }
 
             if (state.activeTab === 'settings') {
@@ -984,37 +983,6 @@
         window.toggleMentorTrialCard = (trialId) => {
             const itemList = document.getElementById(`mentor-item-list-${trialId}`);
             if (itemList) itemList.classList.toggle('hidden');
-        };
-        window.clearSearchError = () => {
-            state.search.error = null;
-            render();
-        };
-
-        const handlePlayerSearch = async (e) => {
-            e.preventDefault();
-            if (!state.search.characterName) {
-                state.search.error = 'Please enter a character name.';
-                render();
-                return;
-            }
-            state.search.isLoading = true;
-            state.search.error = null;
-            state.searchedCharacter = null;
-            render();
-
-            try {
-                const { characterName, realm, region } = state.search;
-                const url = `https://raider.io/api/v1/characters/profile?region=${region}&realm=${realm}&name=${encodeURIComponent(characterName)}&fields=gear,mythic_plus_scores_by_season:current,raid_progression`;
-                const response = await fetch(url);
-                if (!response.ok) throw new Error('Character not found on Raider.io.');
-                const data = await response.json();
-                state.searchedCharacter = data;
-            } catch (err) {
-                state.search.error = err.message;
-            } finally {
-                state.search.isLoading = false;
-                render();
-            }
         };
 
         const addPlayerToTeam = async (teamName, player) => {
@@ -1117,19 +1085,7 @@
 
             if (player) {
                 addPlayerToTrials(player);
-                // The line to remove the player is now gone
             }
-        };
-
-        const handleAddSearchedPlayer = (e) => {
-            const teamName = e.currentTarget.dataset.teamName;
-            if (teamName === 'trials') {
-                addPlayerToTrials(state.searchedCharacter);
-            } else {
-                addPlayerToTeam(teamName, state.searchedCharacter);
-            }
-            state.searchedCharacter = null;
-            render();
         };
 
         const handleRemovePlayer = (e) => {
@@ -1215,8 +1171,23 @@
         const handleDragStart = (e) => {
             const playerId = e.currentTarget.dataset.playerId;
             const teamId = e.currentTarget.dataset.teamId;
-            const team = teamId === 'teamFeather' ? state.teamFeather : state.teamFang;
-            draggedPlayer = team.find(p => p.id === playerId);
+            
+            let playerPool = [];
+            if (teamId === 'unassigned') {
+                 const assignedPlayerIds = new Set([...state.teamFeather.map(p => p.id), ...state.teamFang.map(p => p.id)]);
+                 playerPool = state.guildRoster.members
+                    .map(m => {
+                        if (!m.raiderioData) return null;
+                        const realmSlug = m.blizzardData.realm.slug;
+                        const pId = `${m.blizzardData.name}-${realmSlug}`;
+                        return { ...m.raiderioData, id: pId, spec: m.raiderioData.active_spec_name, itemLevel: m.raiderioData.gear.item_level_equipped };
+                    })
+                    .filter(m => m && !assignedPlayerIds.has(m.id));
+            } else {
+                playerPool = teamId === 'teamFeather' ? state.teamFeather : state.teamFang;
+            }
+
+            draggedPlayer = playerPool.find(p => p.id === playerId);
             sourceTeam = teamId;
             e.dataTransfer.effectAllowed = 'move';
         };
@@ -1227,9 +1198,13 @@
             e.preventDefault();
             const targetTeam = e.currentTarget.dataset.teamId;
             if (sourceTeam !== targetTeam && draggedPlayer) {
-                const wasAdded = await addPlayerToTeam(targetTeam, draggedPlayer);
-                if (wasAdded) {
+                if(targetTeam === 'unassigned') {
                     await removePlayer(sourceTeam, draggedPlayer.id, draggedPlayer.name);
+                } else {
+                    const wasAdded = await addPlayerToTeam(targetTeam, draggedPlayer);
+                    if (wasAdded && sourceTeam !== 'unassigned') {
+                        await removePlayer(sourceTeam, draggedPlayer.id, draggedPlayer.name);
+                    }
                 }
             }
             draggedPlayer = null;
