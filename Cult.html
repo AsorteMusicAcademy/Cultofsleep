@@ -100,15 +100,42 @@
             appId: "1:55622141495:web:c31a083a723e564c1561b2"
         };
         
-        // Prioritize environment-provided config, but use hardcoded as a fallback.
-        const firebaseConfig = (typeof __firebase_config !== 'undefined' && __firebase_config)
-            ? JSON.parse(__firebase_config)
-            : hardcodedFirebaseConfig;
+        let firebaseConfig = hardcodedFirebaseConfig;
+        console.log("Defaulting to hardcoded Firebase config.");
+
+        if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+            console.log("Found environment-provided __firebase_config:", __firebase_config);
+            try {
+                const envConfig = JSON.parse(__firebase_config);
+                if (envConfig.apiKey && envConfig.projectId) {
+                    firebaseConfig = envConfig;
+                    console.log("Successfully parsed and applied environment-provided Firebase config.");
+                } else {
+                    console.warn("Environment-provided Firebase config is missing key properties. Using hardcoded fallback.");
+                }
+            } catch (e) {
+                console.error("Failed to parse environment-provided __firebase_config. Using hardcoded fallback.", e);
+            }
+        } else {
+            console.log("No environment-provided __firebase_config found. Using hardcoded config.");
+        }
 
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-cult-of-sleep';
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
+        let app, db, auth;
+
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            console.log("Firebase initialized successfully.");
+        } catch (e) {
+            console.error("CRITICAL: Firebase initialization failed.", e);
+            document.getElementById('app').innerHTML = `<div class="bg-red-800 text-white text-center p-8 rounded-lg">
+                <h1 class="text-2xl font-bold">Application Error</h1>
+                <p class="mt-2">Could not initialize critical services. The application cannot continue. Please check the console for details.</p>
+            </div>`;
+            throw new Error("Halting execution due to Firebase initialization failure.");
+        }
 
         // --- Helper Functions ---
         const handleImgError = (e, name) => {
@@ -702,6 +729,7 @@
         // --- Main Render Function ---
         const render = () => {
             const appContainer = document.getElementById('app');
+            if (!appContainer) return; // Guard against rendering before body is ready
             let currentPageHtml = '';
             switch (state.activeTab) {
                 case 'roster': currentPageHtml = GuildRosterPage(); break;
