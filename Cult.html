@@ -85,7 +85,8 @@
             },
             settings: {
                 api: { clientId: '179eaf3a69454a35824e37a301ffc151', clientSecret: 'qNKUNKJlAU8nMx2PElgRNH9bACNHw7vO' },
-                guild: { name: 'Cult Of Sleep', realm: 'Turalyon', region: 'eu', officers: 'Officer1,Officer2' }
+                guild: { name: 'Cult Of Sleep', realm: 'Turalyon', region: 'eu', officers: 'Officer1,Officer2' },
+                discord: { serverId: '' }
             },
             searchedCharacter: null,
             guildRoster: {
@@ -245,7 +246,7 @@
         };
 
         const TabNavigation = () => {
-            const tabs = ['organizer', 'roster', 'trials', 'mentors', 'calendar', 'settings'];
+            const tabs = ['organizer', 'roster', 'trials', 'mentors', 'calendar', 'discord', 'settings'];
             return `
                 <div class="flex justify-center border-b border-gray-700 mb-6 flex-wrap">
                     ${tabs.map(tab => `
@@ -834,6 +835,39 @@
                 </div>
             `;
         };
+
+        const DiscordPage = () => {
+            const { serverId } = state.settings.discord;
+            const widgetUrl = serverId ? `https://discord.com/widget?id=${serverId}&theme=dark` : '';
+
+            return `
+                <div class="animate-fade-in">
+                    <div class="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+                        <h3 class="text-3xl font-bold mb-4 text-center text-yellow-400 border-b-2 border-gray-700 pb-2">Discord Settings</h3>
+                        <form id="discord-settings-form" class="flex flex-col md:flex-row gap-4 items-center">
+                            <div class="w-full">
+                                <label for="discord-server-id" class="block text-sm font-medium text-gray-300 mb-1">Discord Server ID</label>
+                                <input type="text" id="discord-server-id" name="discordServerId" value="${serverId}" placeholder="Enter your server ID here" class="bg-gray-700 text-white w-full p-3 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-400">
+                            </div>
+                            <button type="submit" ${authDisabled()} class="bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold w-full md:w-auto py-3 px-6 rounded-md transition duration-300 self-end ${authDisabledClasses()}">Save</button>
+                        </form>
+                        <p class="text-xs text-gray-400 mt-2">To get your Server ID, go to Server Settings > Widget in Discord, and enable the server widget. The ID will be displayed there.</p>
+                    </div>
+                    ${serverId ? `
+                        <div class="bg-gray-800 rounded-lg shadow-lg p-6">
+                            <h3 class="text-3xl font-bold mb-4 text-center text-yellow-400 border-b-2 border-gray-700 pb-2">Guild Discord</h3>
+                            <div class="rounded-lg overflow-hidden" style="height: 70vh;">
+                                <iframe src="${widgetUrl}" width="100%" height="100%" allowtransparency="true" frameborder="0" sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"></iframe>
+                            </div>
+                        </div>
+                    ` : `
+                        <div class="text-center text-gray-400 p-8 bg-gray-800 rounded-lg">
+                            <p>Please enter your Discord Server ID above to display the widget.</p>
+                        </div>
+                    `}
+                </div>
+            `;
+        };
         
         // --- Main Render Function ---
         const render = () => {
@@ -845,6 +879,7 @@
                 case 'trials': currentPageHtml = PlayerTrialsPage(); break;
                 case 'mentors': currentPageHtml = MentorsPage(); break;
                 case 'calendar': currentPageHtml = CalendarPage(); break;
+                case 'discord': currentPageHtml = DiscordPage(); break;
                 case 'settings': currentPageHtml = SettingsPage(); break;
                 case 'organizer':
                 default: currentPageHtml = RaidOrganizerPage(); break;
@@ -894,6 +929,10 @@
 
             if (state.activeTab === 'settings') {
                 document.getElementById('settings-form')?.addEventListener('submit', handleSaveSettings);
+            }
+
+             if (state.activeTab === 'discord') {
+                document.getElementById('discord-settings-form')?.addEventListener('submit', handleSaveDiscordSettings);
             }
 
             if (state.activeTab === 'trials') {
@@ -1153,6 +1192,20 @@
                 await setDoc(guildSettingsRef, newSettings.guild, { merge: true }); 
                 showNotification("Officer list saved successfully!");
             } catch (err) { console.error("Error saving settings:", err); showNotification("Failed to save settings.", "error"); }
+        };
+
+        const handleSaveDiscordSettings = async (e) => {
+            e.preventDefault();
+            if (!state.user) return;
+            const serverId = document.getElementById('discord-server-id').value;
+            const discordSettingsRef = doc(db, "artifacts", appId, "public", "data", "app_settings", "discord_config");
+            try {
+                await setDoc(discordSettingsRef, { serverId });
+                showNotification("Discord Server ID saved!");
+            } catch (err) {
+                console.error("Error saving Discord settings:", err);
+                showNotification("Failed to save Discord settings.", "error");
+            }
         };
 
         // --- Drag and Drop Handlers ---
@@ -1504,6 +1557,18 @@
                     render();
                 }, (error) => {
                     console.error("Error on settings snapshot:", error);
+                });
+
+                const discordSettingsRef = doc(db, "artifacts", appId, "public", "data", "app_settings", "discord_config");
+                onSnapshot(discordSettingsRef, docSnap => {
+                    if (docSnap.exists()) {
+                        state.settings.discord.serverId = docSnap.data().serverId || '';
+                    }
+                    if (state.activeTab === 'discord') {
+                        render();
+                    }
+                }, (error) => {
+                    console.error("Error on discord settings snapshot:", error);
                 });
 
                 const featherColRef = collection(db, "artifacts", appId, "public", "data", "teamFeather");
