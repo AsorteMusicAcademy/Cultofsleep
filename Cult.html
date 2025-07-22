@@ -288,7 +288,7 @@
                             ${ilvlGainText ? `<p class="font-semibold ${ilvlGainData.gain > 0 ? 'text-yellow-400' : 'text-gray-400'} text-xs">${ilvlGainText}</p>` : ''}
                             <p class="font-bold ${scoreColor}">M+: ${Math.round(mythicPlusScore)}</p>
                         </div>
-                        ${raidProgression ? RaidProgress(raidProgression, 'the-war-within-raid-1', 'TWW Prog') : ''}
+                        ${raidProgression ? RaidProgress(raidProgression, 'liberation-of-undermine', 'Liberation of Undermine') : ''}
                         ${player.startDate ? `<p class="text-xs text-gray-400 italic pt-1">Trial Started: ${player.startDate}</p>` : ''}
                         ${player.mentorName ? `<p class="text-xs text-yellow-300 italic pt-1">Assigned to mentor - ${player.mentorName}</p>` : ''}
                     </div>
@@ -334,7 +334,7 @@
         };
 
         const BossKills = (raidProgression) => {
-            const raid = raidProgression['the-war-within-raid-1'];
+            const raid = raidProgression['liberation-of-undermine'];
             if (!raid) return '';
 
             const difficulties = [
@@ -345,7 +345,7 @@
 
             return `
                 <div class="bg-gray-800 p-4 mt-2 animate-fade-in-down">
-                    <h5 class="text-lg font-semibold mb-3 text-gray-300 border-b border-gray-700 pb-2">Boss Kills (The War Within)</h5>
+                    <h5 class="text-lg font-semibold mb-3 text-gray-300 border-b border-gray-700 pb-2">Boss Kills (Liberation of Undermine)</h5>
                     <div class="space-y-3">
                     ${difficulties.map(diff => {
                         if (!diff.kills || diff.kills.length === 0) return '';
@@ -1509,47 +1509,68 @@
             state.user = currentUser;
             state.isAuthReady = true;
 
-            // Once authenticated, set up listeners for data that can change
-            const settingsGuildRef = doc(db, "artifacts", appId, "public", "data", "app_settings", "guild_config");
-            onSnapshot(settingsGuildRef, docSnap => {
-                if (docSnap.exists()) {
-                    // Only update officers, keep the rest hardcoded
-                    state.settings.guild.officers = docSnap.data().officers || state.settings.guild.officers;
-                }
-                render();
-            });
-
-            const featherColRef = collection(db, "artifacts", appId, "public", "data", "teamFeather");
-            onSnapshot(featherColRef, (snapshot) => {
-                state.teamFeather = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                render();
-            });
-            
-            const fangColRef = collection(db, "artifacts", appId, "public", "data", "teamFang");
-            onSnapshot(fangColRef, (snapshot) => {
-                state.teamFang = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                render();
-            });
-            
-            const trialsColRef = collection(db, "artifacts", appId, "public", "data", "teamTrials");
-            onSnapshot(trialsColRef, (snapshot) => {
-                state.teamTrials = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                render();
-            });
-
-            const mentorsColRef = collection(db, "artifacts", appId, "public", "data", "mentors");
-            onSnapshot(mentorsColRef, (snapshot) => {
-                state.mentors = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                render();
-            });
-
-            const calendarEventsColRef = collection(db, "artifacts", appId, "public", "data", "calendarEvents");
-            onSnapshot(calendarEventsColRef, (snapshot) => {
-                state.calendar.events = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                if (state.activeTab === 'calendar') {
+            if (currentUser) {
+                // Once authenticated, set up listeners for data that can change
+                const settingsGuildRef = doc(db, "artifacts", appId, "public", "data", "app_settings", "guild_config");
+                onSnapshot(settingsGuildRef, docSnap => {
+                    if (docSnap.exists()) {
+                        state.settings.guild.officers = docSnap.data().officers || state.settings.guild.officers;
+                    }
                     render();
-                }
-            });
+                }, (error) => {
+                    console.error("Error on settings snapshot:", error);
+                });
+
+                const featherColRef = collection(db, "artifacts", appId, "public", "data", "teamFeather");
+                onSnapshot(featherColRef, (snapshot) => {
+                    state.teamFeather = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    render();
+                }, (error) => {
+                    console.error("Error on teamFeather snapshot:", error);
+                });
+                
+                const fangColRef = collection(db, "artifacts", appId, "public", "data", "teamFang");
+                onSnapshot(fangColRef, (snapshot) => {
+                    state.teamFang = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    render();
+                }, (error) => {
+                    console.error("Error on teamFang snapshot:", error);
+                });
+                
+                const trialsColRef = collection(db, "artifacts", appId, "public", "data", "teamTrials");
+                onSnapshot(trialsColRef, (snapshot) => {
+                    state.teamTrials = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    render();
+                }, (error) => {
+                    console.error("Error on teamTrials snapshot:", error);
+                });
+
+                const mentorsColRef = collection(db, "artifacts", appId, "public", "data", "mentors");
+                onSnapshot(mentorsColRef, (snapshot) => {
+                    state.mentors = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    render();
+                }, (error) => {
+                    console.error("Error on mentors snapshot:", error);
+                });
+
+                const calendarEventsColRef = collection(db, "artifacts", appId, "public", "data", "calendarEvents");
+                onSnapshot(calendarEventsColRef, (snapshot) => {
+                    state.calendar.events = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    if (state.activeTab === 'calendar') {
+                        render();
+                    }
+                }, (error) => {
+                    console.error("Error on calendarEvents snapshot:", error);
+                });
+            } else {
+                console.log("User is not authenticated. Listeners not attached.");
+                state.teamFeather = [];
+                state.teamFang = [];
+                state.teamTrials = [];
+                state.mentors = [];
+                state.calendar.events = [];
+                render();
+            }
         });
 
         // Initial call
